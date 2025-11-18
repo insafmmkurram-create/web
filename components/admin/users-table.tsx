@@ -34,7 +34,8 @@ import { AddSubadminDialog } from "@/components/admin/add-subadmin-dialog"
 import { AddUserDialog } from "@/components/admin/add-user-dialog"
 import { User } from "@/lib/firebase-admin"
 import { useCurrentUserRole } from "@/hooks/use-current-user-role"
-import { ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, Trash2, FileCheck, Plus } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, Trash2, FileCheck, Plus, Printer, DollarSign } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface UsersTableProps {
   data: User[]
@@ -49,6 +50,7 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
   const [addSubadminDialogOpen, setAddSubadminDialogOpen] = useState(false)
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false)
   const { userRole } = useCurrentUserRole()
+  const router = useRouter()
   
   const isAdmin = userRole === "admin"
 
@@ -172,7 +174,7 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
         const date = row.getValue("createdAt")
         if (!date) return "N/A"
         try {
-          const dateObj = date.toDate ? date.toDate() : new Date(date)
+          const dateObj = (date as any)?.toDate ? (date as any).toDate() : new Date(date as string | number | Date)
           return dateObj.toLocaleDateString()
         } catch {
           return "N/A"
@@ -202,6 +204,12 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
               >
                 <FileCheck className="mr-2 h-4 w-4" />
                 Change Status
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handlePrint(user)}
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Print
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -271,6 +279,265 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
     }
   }
 
+  const handlePrint = (user: User) => {
+    // Create a new window for printing
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
+
+    // Format date
+    const formatDate = (date: any) => {
+      if (!date) return "N/A"
+      try {
+        const dateObj = (date as any)?.toDate ? (date as any).toDate() : new Date(date as string | number | Date)
+        return dateObj.toLocaleDateString()
+      } catch {
+        return "N/A"
+      }
+    }
+
+    // Format marital status
+    const formatMaritalStatus = (married: boolean | undefined) => {
+      if (married === undefined) return "N/A"
+      return married ? "Married" : "Unmarried"
+    }
+
+    // Build family members HTML
+    const familyMembers = user.familyMembers || []
+    const familyMembersHtml = familyMembers.length > 0
+      ? `
+        <div style="margin-top: 20px; page-break-inside: avoid;">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #374151;">
+            Family Members (${familyMembers.length})
+          </h3>
+          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
+            ${familyMembers.map((member: any, index: number) => `
+              <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 12px; ${index === familyMembers.length - 1 ? 'border-bottom: none; margin-bottom: 0;' : ''}">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+                  <div><strong>Name:</strong> ${member.name || "N/A"}</div>
+                  <div><strong>Relation:</strong> ${member.relation || "N/A"}</div>
+                  <div><strong>NIC:</strong> ${member.nic || "N/A"}</div>
+                  <div><strong>Share:</strong> ${member.share ? `${member.share}%` : "N/A"}</div>
+                  <div><strong>Gender:</strong> ${member.gender || "N/A"}</div>
+                  <div><strong>Marital Status:</strong> ${formatMaritalStatus(member.married)}</div>
+                  <div><strong>DOB:</strong> ${formatDate(member.dob)}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `
+      : ""
+
+    // Status badge color
+    const statusColor = user.status === "accepted" 
+      ? "#10b981" 
+      : user.status === "rejected" 
+      ? "#ef4444" 
+      : "#f59e0b"
+
+    // Build the HTML content
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Insaf Mining & Minerals Private Limited - Registration Details - ${user.name || "N/A"}</title>
+          <style>
+            @media print {
+              body { margin: 0; }
+              .no-print { display: none; }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              color: #111827;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #e5e7eb;
+              padding-bottom: 20px;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 24px;
+              color: #111827;
+            }
+            .user-image {
+              text-align: center;
+              margin: 20px 0;
+            }
+            .user-image img {
+              width: 128px;
+              height: 128px;
+              border-radius: 50%;
+              border: 4px solid #e5e7eb;
+              object-fit: cover;
+            }
+            .user-image-placeholder {
+              width: 128px;
+              height: 128px;
+              border-radius: 50%;
+              background-color: #e5e7eb;
+              border: 4px solid #d1d5db;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              color: #9ca3af;
+              font-size: 12px;
+            }
+            .details-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+              margin-top: 20px;
+            }
+            .detail-item {
+              margin-bottom: 15px;
+            }
+            .detail-label {
+              font-size: 12px;
+              font-weight: 500;
+              color: #6b7280;
+              margin-bottom: 4px;
+            }
+            .detail-value {
+              font-size: 14px;
+              font-weight: 600;
+              color: #111827;
+            }
+            .status-badge {
+              display: inline-block;
+              padding: 4px 12px;
+              border-radius: 9999px;
+              font-size: 11px;
+              font-weight: 500;
+              text-transform: uppercase;
+            }
+            .print-button {
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              padding: 10px 20px;
+              background-color: #3b82f6;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 14px;
+            }
+            .print-button:hover {
+              background-color: #2563eb;
+            }
+          </style>
+        </head>
+        <body>
+          <button class="print-button no-print" onclick="window.print()">Print</button>
+          
+          <div class="header">
+            <h1>Insaf Mining & Minerals Private Limited - Registration Details</h1>
+          </div>
+
+          <div class="user-image">
+            ${user.imageUrl 
+              ? `<img src="${user.imageUrl}" alt="${user.name || "User"}" />` 
+              : `<div class="user-image-placeholder">No Image</div>`
+            }
+          </div>
+
+          <div class="details-grid">
+            <div class="detail-item">
+              <div class="detail-label">Name</div>
+              <div class="detail-value">${user.name || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Email</div>
+              <div class="detail-value">${user.email || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Phone</div>
+              <div class="detail-value">${user.mobile || user.phone || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">NIC</div>
+              <div class="detail-value">${user.cnic || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Date of Birth</div>
+              <div class="detail-value">${formatDate(user.dob)}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Gender</div>
+              <div class="detail-value">${user.gender || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Marital Status</div>
+              <div class="detail-value">${formatMaritalStatus(user.married)}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Father Name</div>
+              <div class="detail-value">${user.fatherName || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Tribe</div>
+              <div class="detail-value">${user.tribe || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Subtribe</div>
+              <div class="detail-value">${user.subtribe || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Province</div>
+              <div class="detail-value">${user.province || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">District</div>
+              <div class="detail-value">${user.district || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Tehsil</div>
+              <div class="detail-value">${user.tehsil || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Bank Name</div>
+              <div class="detail-value">${user.bankName || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Account Number</div>
+              <div class="detail-value">${user.accountNo || "N/A"}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Current Status</div>
+              <div class="detail-value">
+                <span class="status-badge" style="background-color: ${statusColor}20; color: ${statusColor};">
+                  ${(user.status || "PENDING").toUpperCase()}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          ${familyMembersHtml}
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+            Generated on ${new Date().toLocaleString()}
+          </div>
+        </body>
+      </html>
+    `
+
+    // Write content and trigger print
+    printWindow.document.write(htmlContent)
+    printWindow.document.close()
+    
+    // Wait for images to load, then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+      }, 250)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <ChangeStatusDialog
@@ -303,6 +570,10 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
           className="max-w-sm"
         />
         <div className="flex items-center gap-4">
+          <Button onClick={() => router.push("/admin/payment")}>
+            <DollarSign className="mr-2 h-4 w-4" />
+            Payment
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button>

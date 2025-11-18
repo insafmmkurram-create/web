@@ -81,11 +81,12 @@ export function Footer() {
               <li>
                 Email:{" "}
                 <a href="mailto:info@insafmining.pk" className="hover:text-amber-400 transition">
-                  info@insafmining.pk
+                  insafmmkurram@gmail.com
                 </a>
               </li>
-              <li>Phone: +92 51 1234567</li>
-              <li>Islamabad, Pakistan</li>
+              <li>Phone: +92 30 09591990</li>
+              <li>Office Address: Near Azam hospital Upper Sateen Lower Kurram KPK</li>
+              <li>Project Site Office: Arwaza Central Kurram KPK</li>
             </ul>
           </div>
         </div>

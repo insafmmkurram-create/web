@@ -16,7 +16,7 @@ export default function Contact() {
                 <div className="space-y-6">
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Address</h3>
-                    <p className="text-gray-700">Islamabad, Pakistan</p>
+                    <p className="text-gray-700">Near Azam hospital Upper Sateen Lower Kurram KPK</p>
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Email</h3>
