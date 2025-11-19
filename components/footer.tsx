@@ -80,7 +80,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 Email:{" "}
-                <a href="mailto:info@insafmining.pk" className="hover:text-amber-400 transition">
+                <a href="mailto:insafmmkurram@gmail.com" className="hover:text-amber-400 transition">
                   insafmmkurram@gmail.com
                 </a>
               </li>

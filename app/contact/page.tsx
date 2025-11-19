@@ -20,14 +20,14 @@ export default function Contact() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Email</h3>
-                    <a href="mailto:info@insafmining.pk" className="text-amber-800 hover:text-amber-900">
-                      info@insafmining.pk
+                    <a href="mailto:insafmmkurram@gmail.com" className="text-amber-800 hover:text-amber-900">
+                    insafmmkurram@gmail.com
                     </a>
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Phone</h3>
-                    <a href="tel:+92511234567" className="text-amber-800 hover:text-amber-900">
-                      +92 51 1234567
+                    <a href="tel:+92 30 09591990" className="text-amber-800 hover:text-amber-900">
+                    +92 30 09591990
                     </a>
                   </div>
                 </div>

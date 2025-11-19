@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, DollarSign } from "lucide-react"
+import { ArrowLeft, DollarSign, Download } from "lucide-react"
 
 interface PaymentCalculation {
   applicantName: string
@@ -267,6 +267,47 @@ export default function PaymentPage() {
   const totalCalculated = calculations.reduce((sum, calc) => sum + calc.totalFamilyShare, 0)
   const totalAmountNum = parseFloat(amount) || 0
 
+  const exportToExcel = () => {
+    if (calculations.length === 0) {
+      alert("No data to export")
+      return
+    }
+
+    // Create CSV content (Excel can open CSV files)
+    const headers = ["Applicant Name", "NIC", "Account Number", "Bank Name", "Total Family Share (PKR)"]
+    const rows = calculations.map((calc) => [
+      calc.applicantName,
+      calc.nic,
+      calc.accountNumber,
+      calc.bankName,
+      calc.totalFamilyShare.toFixed(2),
+    ])
+
+    // Add summary row
+    const summaryRow = ["", "", "", "Total:", totalCalculated.toFixed(2)]
+
+    // Combine all rows
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+      summaryRow.map((cell) => `"${cell}"`).join(","),
+    ].join("\n")
+
+    // Create BOM for UTF-8 (Excel compatibility)
+    const BOM = "\uFEFF"
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" })
+
+    // Create download link
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `payment-distribution-${new Date().toISOString().split("T")[0]}.xls`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <AuthGuard allowedRoles={["admin", "subadmin"]}>
       <main className="min-h-screen bg-gray-50">
@@ -347,15 +388,20 @@ export default function PaymentPage() {
             <Card className="p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Payment Distribution</h2>
-                <div className="text-sm text-gray-600">
-                  Total Distributed: <span className="font-bold">{formatCurrency(totalCalculated)}</span>
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-600">
+                    Total Distributed: <span className="font-bold">{formatCurrency(totalCalculated)}</span>
+                  </div>
+                  <Button onClick={exportToExcel} variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Export to Excel
+                  </Button>
                 </div>
               </div>
               <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Category</TableHead>
                       <TableHead>Applicant Name</TableHead>
                       <TableHead>NIC</TableHead>
                       <TableHead>Account Number</TableHead>
@@ -366,15 +412,6 @@ export default function PaymentPage() {
                   <TableBody>
                     {calculations.map((calc, index) => (
                       <TableRow key={index}>
-                        <TableCell>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(
-                              calc.category
-                            )}`}
-                          >
-                            {getCategoryLabel(calc.category)}
-                          </span>
-                        </TableCell>
                         <TableCell className="font-medium">{calc.applicantName}</TableCell>
                         <TableCell>{calc.nic}</TableCell>
                         <TableCell>{calc.accountNumber}</TableCell>
