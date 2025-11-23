@@ -1,6 +1,6 @@
 "use client"
 
-import { collection, getDocs, query, where, DocumentData, doc, setDoc, serverTimestamp } from "firebase/firestore"
+import { collection, getDocs, query, where, DocumentData, doc, setDoc, serverTimestamp, writeBatch, addDoc } from "firebase/firestore"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { auth, db } from "./firebase"
 
@@ -473,6 +473,99 @@ export async function getAllSubadmins(): Promise<any[]> {
   }
 }
 
+export interface PaymentRecord {
+  id?: string
+  applicantName: string
+  nic: string
+  accountNumber: string
+  bankName: string
+  paymentTotal: number
+  date: string // ISO date string
+  createdAt?: any
+}
+
+const PAYMENTS_COLLECTION = "payments"
+
+export async function savePaymentRecord(payment: PaymentRecord): Promise<void> {
+  try {
+    const paymentsCollection = collection(db, PAYMENTS_COLLECTION)
+    await addDoc(paymentsCollection, {
+      applicantName: payment.applicantName,
+      nic: payment.nic,
+      accountNumber: payment.accountNumber,
+      bankName: payment.bankName,
+      paymentTotal: payment.paymentTotal,
+      date: payment.date,
+      createdAt: serverTimestamp(),
+    })
+    console.log("Payment record saved successfully")
+  } catch (error) {
+    console.error("Error saving payment record:", error)
+    throw error
+  }
+}
+
+export async function savePaymentRecords(payments: PaymentRecord[]): Promise<void> {
+  try {
+    const batch = writeBatch(db)
+    const paymentsCollection = collection(db, PAYMENTS_COLLECTION)
+    
+    payments.forEach((payment) => {
+      // Create a new document reference with auto-generated ID
+      const paymentRef = doc(paymentsCollection)
+      batch.set(paymentRef, {
+        applicantName: payment.applicantName,
+        nic: payment.nic,
+        accountNumber: payment.accountNumber,
+        bankName: payment.bankName,
+        paymentTotal: payment.paymentTotal,
+        date: payment.date,
+        createdAt: serverTimestamp(),
+      })
+    })
+    
+    await batch.commit()
+    console.log(`Saved ${payments.length} payment records successfully`)
+  } catch (error) {
+    console.error("Error saving payment records:", error)
+    throw error
+  }
+}
+
+export async function getAllPaymentRecords(): Promise<PaymentRecord[]> {
+  try {
+    const paymentsCollection = collection(db, PAYMENTS_COLLECTION)
+    const paymentsSnapshot = await getDocs(paymentsCollection)
+    
+    const payments: PaymentRecord[] = []
+    paymentsSnapshot.forEach((doc) => {
+      const data = doc.data()
+      payments.push({
+        id: doc.id,
+        applicantName: data.applicantName || "",
+        nic: data.nic || "",
+        accountNumber: data.accountNumber || "",
+        bankName: data.bankName || "",
+        paymentTotal: data.paymentTotal || 0,
+        date: data.date || "",
+        createdAt: data.createdAt,
+      })
+    })
+    
+    // Sort by date descending (newest first)
+    payments.sort((a, b) => {
+      const dateA = new Date(a.date).getTime()
+      const dateB = new Date(b.date).getTime()
+      return dateB - dateA
+    })
+    
+    return payments
+  } catch (error) {
+    console.error("Error fetching payment records:", error)
+    throw error
+  }
+}
+
 export async function updateSubadmin(subadminId: string, data: { email: string }): Promise<void> {
   try {
     // Call API route to update email in both Auth and Firestore
@@ -521,6 +614,58 @@ export async function updateSubadminPassword(subadminId: string, newPassword: st
     console.log(`Updated password for subadmin ${subadminId}`)
   } catch (error: any) {
     console.error("Error updating subadmin password:", error)
+    throw new Error(error.message || "Failed to update password")
+  }
+}
+
+export async function updateUserEmail(userId: string, email: string): Promise<void> {
+  try {
+    // Call API route to update email in both Auth and Firestore
+    const response = await fetch("/api/admin/update-user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId,
+        email: email,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to update user email")
+    }
+
+    console.log(`Updated email for user ${userId}`)
+  } catch (error: any) {
+    console.error("Error updating user email:", error)
+    throw new Error(error.message || "Failed to update user email")
+  }
+}
+
+export async function updateUserPassword(userId: string, newPassword: string): Promise<void> {
+  try {
+    // Call API route to update password in Auth
+    const response = await fetch("/api/admin/update-user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId,
+        password: newPassword,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to update password")
+    }
+
+    console.log(`Updated password for user ${userId}`)
+  } catch (error: any) {
+    console.error("Error updating user password:", error)
     throw new Error(error.message || "Failed to update password")
   }
 }

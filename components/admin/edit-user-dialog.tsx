@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { User } from "@/lib/firebase-admin"
-import { updateUserData, updateRegistrationData } from "@/lib/firebase-admin"
-import { Loader2, Trash2, Save } from "lucide-react"
+import { updateUserData, updateRegistrationData, updateUserEmail, updateUserPassword } from "@/lib/firebase-admin"
+import { Loader2, Trash2, Save, Plus } from "lucide-react"
 import Image from "next/image"
 
 interface EditUserDialogProps {
@@ -33,6 +33,8 @@ export function EditUserDialog({
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<any>(null)
   const [familyMembers, setFamilyMembers] = useState<any[]>([])
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -54,6 +56,8 @@ export function EditUserDialog({
         accountNo: user.accountNo || "",
       })
       setFamilyMembers(user.familyMembers ? [...user.familyMembers] : [])
+      setPassword("")
+      setError(null)
     }
   }, [user])
 
@@ -83,11 +87,62 @@ export function EditUserDialog({
     }
   }
 
+  const handleAddFamilyMember = () => {
+    setFamilyMembers((prev) => [
+      ...prev,
+      {
+        name: "",
+        relation: "",
+        nic: "",
+        share: 0,
+        gender: "",
+        dob: "",
+        married: false,
+        tribe: "",
+        subtribe: "",
+        province: "",
+        district: "",
+        tehsil: "",
+      },
+    ])
+  }
+
   const handleSave = async () => {
     if (!user.id) return
 
     try {
       setLoading(true)
+      setError(null)
+
+      // Update email if changed
+      if (formData.email !== user.email) {
+        try {
+          await updateUserEmail(user.id, formData.email)
+        } catch (emailError: any) {
+          console.error("Error updating email:", emailError)
+          setError(`Failed to update email: ${emailError.message}`)
+          // Continue with other updates even if email fails
+        }
+      }
+
+      // Update password if provided
+      if (password.trim() !== "") {
+        try {
+          await updateUserPassword(user.id, password)
+          setPassword("") // Clear password field after successful update
+        } catch (pwdError: any) {
+          console.error("Error updating password:", pwdError)
+          if (formData.email === user.email) {
+            // If email didn't change and password fails, show error
+            setError(`Failed to update password: ${pwdError.message}`)
+            setLoading(false)
+            return
+          } else {
+            // If email was updated but password fails, show warning but continue
+            setError(`Email updated, but password update failed: ${pwdError.message}`)
+          }
+        }
+      }
 
       // Prepare updated data
       const updatedData = {
@@ -107,10 +162,12 @@ export function EditUserDialog({
 
       // Refresh the data
       onUserUpdated()
-      onOpenChange(false)
-    } catch (error) {
+      if (!error) {
+        onOpenChange(false)
+      }
+    } catch (error: any) {
       console.error("Error updating user:", error)
-      alert("Failed to update user. Please try again.")
+      setError(error.message || "Failed to update user. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -146,6 +203,44 @@ export function EditUserDialog({
             )}
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Account Information */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Account Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password">New Password (leave blank to keep current)</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  minLength={6}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave blank to keep current password. Minimum 6 characters.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Personal Information */}
           <div>
             <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
@@ -156,16 +251,6 @@ export function EditUserDialog({
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
                 />
               </div>
 
@@ -314,10 +399,30 @@ export function EditUserDialog({
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Family Members ({familyMembers.length})</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddFamilyMember}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Family Member
+              </Button>
             </div>
             <div className="space-y-4 max-h-96 overflow-y-auto border rounded-lg p-4">
               {familyMembers.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">No family members</p>
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500 mb-4">No family members</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddFamilyMember}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Family Member
+                  </Button>
+                </div>
               ) : (
                 familyMembers.map((member: any, index: number) => (
                   <div key={index} className="border rounded-lg p-4 bg-gray-50">

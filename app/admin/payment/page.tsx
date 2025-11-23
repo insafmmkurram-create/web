@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, DollarSign, Download } from "lucide-react"
+import { ArrowLeft, DollarSign, Download, Save, History } from "lucide-react"
+import { AddPaymentRecordDialog } from "@/components/admin/add-payment-record-dialog"
+import { PaymentHistoryDialog } from "@/components/admin/payment-history-dialog"
 
 interface PaymentCalculation {
   applicantName: string
@@ -26,6 +28,8 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true)
   const [amount, setAmount] = useState<string>("")
   const [calculations, setCalculations] = useState<PaymentCalculation[]>([])
+  const [addRecordDialogOpen, setAddRecordDialogOpen] = useState(false)
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -392,6 +396,14 @@ export default function PaymentPage() {
                   <div className="text-sm text-gray-600">
                     Total Distributed: <span className="font-bold">{formatCurrency(totalCalculated)}</span>
                   </div>
+                  <Button onClick={() => setHistoryDialogOpen(true)} variant="outline">
+                    <History className="mr-2 h-4 w-4" />
+                    Payment History
+                  </Button>
+                  <Button onClick={() => setAddRecordDialogOpen(true)} variant="outline">
+                    <Save className="mr-2 h-4 w-4" />
+                    Add to Record
+                  </Button>
                   <Button onClick={exportToExcel} variant="outline">
                     <Download className="mr-2 h-4 w-4" />
                     Export to Excel
@@ -434,6 +446,19 @@ export default function PaymentPage() {
           )}
         </div>
         <Footer />
+        <AddPaymentRecordDialog
+          open={addRecordDialogOpen}
+          onOpenChange={setAddRecordDialogOpen}
+          calculations={calculations}
+          onRecordAdded={() => {
+            // Optionally refresh or show success message
+            alert("Payment records saved successfully!")
+          }}
+        />
+        <PaymentHistoryDialog
+          open={historyDialogOpen}
+          onOpenChange={setHistoryDialogOpen}
+        />
       </main>
     </AuthGuard>
   )

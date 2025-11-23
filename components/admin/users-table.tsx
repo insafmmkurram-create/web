@@ -28,6 +28,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { ChangeStatusDialog } from "@/components/admin/change-status-dialog"
 import { EditUserDialog } from "@/components/admin/edit-user-dialog"
 import { AddSubadminDialog } from "@/components/admin/add-subadmin-dialog"
@@ -49,6 +57,8 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [addSubadminDialogOpen, setAddSubadminDialogOpen] = useState(false)
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false)
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [userToPrint, setUserToPrint] = useState<User | null>(null)
   const { userRole } = useCurrentUserRole()
   const router = useRouter()
   
@@ -206,7 +216,10 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
                 Change Status
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => handlePrint(user)}
+                onClick={() => {
+                  setUserToPrint(user)
+                  setPrintDialogOpen(true)
+                }}
               >
                 <Printer className="mr-2 h-4 w-4" />
                 Print
@@ -279,7 +292,7 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
     }
   }
 
-  const handlePrint = (user: User) => {
+  const handlePrint = (user: User, printType: "office" | "user") => {
     // Create a new window for printing
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
@@ -301,18 +314,58 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
       return married ? "Married" : "Unmarried"
     }
 
+    // Status badge color
+    const statusColor = user.status === "accepted" 
+      ? "#10b981" 
+      : user.status === "rejected" 
+      ? "#ef4444" 
+      : "#f59e0b"
+
+    // Build applicant details in card format
+    const applicantDetailsHtml = `
+      <div style="margin-top: 15px; page-break-inside: avoid;">
+        <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: #374151;">
+          Applicant Details
+        </h3>
+        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background-color: #f9fafb;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+            <div><strong>Name:</strong> ${user.name || "N/A"}</div>
+            <div><strong>Email:</strong> ${user.email || "N/A"}</div>
+            <div><strong>Phone:</strong> ${user.mobile || user.phone || "N/A"}</div>
+            <div><strong>NIC:</strong> ${user.cnic || "N/A"}</div>
+            <div><strong>Date of Birth:</strong> ${formatDate(user.dob)}</div>
+            <div><strong>Gender:</strong> ${user.gender || "N/A"}</div>
+            <div><strong>Marital Status:</strong> ${formatMaritalStatus(user.married)}</div>
+            <div><strong>Father Name:</strong> ${user.fatherName || "N/A"}</div>
+            <div><strong>Tribe:</strong> ${user.tribe || "N/A"}</div>
+            <div><strong>Subtribe:</strong> ${user.subtribe || "N/A"}</div>
+            <div><strong>Province:</strong> ${user.province || "N/A"}</div>
+            <div><strong>District:</strong> ${user.district || "N/A"}</div>
+            <div><strong>Tehsil:</strong> ${user.tehsil || "N/A"}</div>
+            <div><strong>Bank Name:</strong> ${user.bankName || "N/A"}</div>
+            <div><strong>Account Number:</strong> ${user.accountNo || "N/A"}</div>
+            <div><strong>Status:</strong> 
+              <span style="background-color: ${statusColor}20; color: ${statusColor}; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 500;">
+                ${(user.status || "PENDING").toUpperCase()}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+
     // Build family members HTML
     const familyMembers = user.familyMembers || []
     const familyMembersHtml = familyMembers.length > 0
       ? `
-        <div style="margin-top: 20px; page-break-inside: avoid;">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #374151;">
+        <div style="margin-top: 15px; page-break-inside: avoid;">
+          <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: #374151;">
             Family Members (${familyMembers.length})
           </h3>
-          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
+          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
             ${familyMembers.map((member: any, index: number) => `
-              <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 12px; ${index === familyMembers.length - 1 ? 'border-bottom: none; margin-bottom: 0;' : ''}">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+              <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px; ${index === familyMembers.length - 1 ? 'border-bottom: none; margin-bottom: 0;' : ''}">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
                   <div><strong>Name:</strong> ${member.name || "N/A"}</div>
                   <div><strong>Relation:</strong> ${member.relation || "N/A"}</div>
                   <div><strong>NIC:</strong> ${member.nic || "N/A"}</div>
@@ -328,13 +381,6 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
       `
       : ""
 
-    // Status badge color
-    const statusColor = user.status === "accepted" 
-      ? "#10b981" 
-      : user.status === "rejected" 
-      ? "#ef4444" 
-      : "#f59e0b"
-
     // Build the HTML content
     const htmlContent = `
       <!DOCTYPE html>
@@ -348,64 +394,49 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
             }
             body {
               font-family: Arial, sans-serif;
-              padding: 20px;
+              padding: 15px;
               color: #111827;
               max-width: 800px;
               margin: 0 auto;
             }
+            @media print {
+              body {
+                padding: 10px;
+              }
+            }
             .header {
               text-align: center;
-              margin-bottom: 30px;
+              margin-bottom: 15px;
               border-bottom: 2px solid #e5e7eb;
-              padding-bottom: 20px;
+              padding-bottom: 15px;
             }
             .header h1 {
               margin: 0;
-              font-size: 24px;
+              font-size: 20px;
               color: #111827;
             }
             .user-image {
               text-align: center;
-              margin: 20px 0;
+              margin: 15px 0;
             }
             .user-image img {
-              width: 128px;
-              height: 128px;
+              width: 100px;
+              height: 100px;
               border-radius: 50%;
-              border: 4px solid #e5e7eb;
+              border: 3px solid #e5e7eb;
               object-fit: cover;
             }
             .user-image-placeholder {
-              width: 128px;
-              height: 128px;
+              width: 100px;
+              height: 100px;
               border-radius: 50%;
               background-color: #e5e7eb;
-              border: 4px solid #d1d5db;
+              border: 3px solid #d1d5db;
               display: inline-flex;
               align-items: center;
               justify-content: center;
               color: #9ca3af;
-              font-size: 12px;
-            }
-            .details-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin-top: 20px;
-            }
-            .detail-item {
-              margin-bottom: 15px;
-            }
-            .detail-label {
-              font-size: 12px;
-              font-weight: 500;
-              color: #6b7280;
-              margin-bottom: 4px;
-            }
-            .detail-value {
-              font-size: 14px;
-              font-weight: 600;
-              color: #111827;
+              font-size: 11px;
             }
             .status-badge {
               display: inline-block;
@@ -446,80 +477,38 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
             }
           </div>
 
-          <div class="details-grid">
-            <div class="detail-item">
-              <div class="detail-label">Name</div>
-              <div class="detail-value">${user.name || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Email</div>
-              <div class="detail-value">${user.email || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Phone</div>
-              <div class="detail-value">${user.mobile || user.phone || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">NIC</div>
-              <div class="detail-value">${user.cnic || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Date of Birth</div>
-              <div class="detail-value">${formatDate(user.dob)}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Gender</div>
-              <div class="detail-value">${user.gender || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Marital Status</div>
-              <div class="detail-value">${formatMaritalStatus(user.married)}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Father Name</div>
-              <div class="detail-value">${user.fatherName || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Tribe</div>
-              <div class="detail-value">${user.tribe || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Subtribe</div>
-              <div class="detail-value">${user.subtribe || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Province</div>
-              <div class="detail-value">${user.province || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">District</div>
-              <div class="detail-value">${user.district || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Tehsil</div>
-              <div class="detail-value">${user.tehsil || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Bank Name</div>
-              <div class="detail-value">${user.bankName || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Account Number</div>
-              <div class="detail-value">${user.accountNo || "N/A"}</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Current Status</div>
-              <div class="detail-value">
-                <span class="status-badge" style="background-color: ${statusColor}20; color: ${statusColor};">
-                  ${(user.status || "PENDING").toUpperCase()}
-                </span>
+          ${applicantDetailsHtml}
+          ${familyMembersHtml}
+          ${printType === "office" ? `
+            <div style="margin-top: 20px; page-break-inside: avoid; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+              <div style="font-size: 8px; line-height: 1.4; color: #374151; direction: rtl; text-align: right; font-family: 'Arial', 'Tahoma', sans-serif;">
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 9px;">رجسٹریشن معاہدہ فارم</div>
+                <div style="font-weight: 600; margin-bottom: 8px; font-size: 9px;">(قوم خواجک اور انصاف مائننگ اینڈ منرلز پرائیویٹ لمیٹڈ کے درمیان)</div>
+                <div style="margin-bottom: 6px;"><strong>1.</strong> انصاف مائننگ اینڈ منرلز پرائیویٹ لمیٹڈ کو علاقہ گردی سنٹرل کرم سے سپین غر تک معدنیات کی تلاش، نکاسی، پراسیسنگ اور فروخت کا مکمل قانونی اختیار ہوگا۔</div>
+                <div style="margin-bottom: 6px;"><strong>2.</strong> مائننگ کے مقام تک راستہ قوم خواجک فراہم کرے گی۔ راستہ بنانے، ہموار کرنے یا مرمت کرنے کے تمام اخراجات کمپنی برداشت کرے گی۔</div>
+                <div style="margin-bottom: 6px;"><strong>3.</strong> مائننگ آپریشن، مشینری، لیبر، فیول، ٹرانسپورٹ، اور تمام متعلقہ اخراجات کمپنی کی ذمہ داری ہوں گے۔</div>
+                <div style="margin-bottom: 6px;"><strong>4.</strong> معدنیات کی فروخت شروع ہونے پر کمپنی سب سے پہلے اپنے تمام اخراجات فروخت سے منہا کرے گی۔</div>
+                <div style="margin-bottom: 6px;"><strong>5.</strong> اخراجات منہا ہونے کے بعد منافع کی تقسیم یوں ہوگی:</div>
+                <div style="margin-left: 10px; margin-bottom: 6px;">50 فیصد انصاف مائننگ اینڈ منرلز پرائیویٹ لمیٹڈ</div>
+                <div style="margin-left: 10px; margin-bottom: 6px;">50 فیصد قوم خواجک کا حصہ ہوگا جو درج ذیل طریقہ کار پر تقسیم کیا جائے گا:</div>
+                <div style="margin-left: 20px; margin-bottom: 6px;">30٪ مرد حضرات (شناختی کارڈ والے)</div>
+                <div style="margin-left: 20px; margin-bottom: 6px;">15٪ خواتین (شناختی کارڈ والی)</div>
+                <div style="margin-left: 20px; margin-bottom: 6px;">5٪- 18 سال سے کم عمر بچے</div>
+                <div style="margin-left: 20px; margin-bottom: 6px;">تمام افراد کو برابر حصہ ملے گا۔</div>
+                <div style="margin-bottom: 6px;"><strong>6.</strong> مائننگ کے دوران کسی رکاوٹ کی صورت میں قوم خواجک کا نمائندہ مسئلہ حل کرے گا اور کام بند نہیں ہونے دیا جائے گا۔</div>
+                <div style="margin-bottom: 6px;"><strong>7.</strong> سال 2004 کے تمام سابقہ معاہدے بدستور موثر اور محفوظ تصور کیے جائیں گے۔</div>
+                <div style="margin-bottom: 6px;"><strong>8.</strong> اگر کسی سرکاری ادارے (انتظامیہ، معدنیات، عدالت، پولیس وغیرہ) کی جانب سے طلبی ہو تو قوم خواجک کا نمائندہ پیش ہو کر کمپنی کی حمایت کرے گا۔</div>
+                <div style="margin-bottom: 6px;"><strong>9.</strong> اگر دورانِ کام کسی مزدور کی حادثاتی موت واقع ہو جائے تو اس کے ورثاء کو کمپنی کی طرف سے مقررہ حصہ/کمیشن تاعُمر دیا جائے گا۔</div>
+                <div style="margin-bottom: 6px;"><strong>10.</strong> یہ معاہدہ 30 سال تک مؤثر رہے گا۔ مدت پوری ہونے پر فریقین باہمی رضامندی سے نیا معاہدہ کریں گے۔</div>
+                <div style="margin-bottom: 6px;"><strong>11.</strong> کمپنی سافٹ ویئر اور ڈیجیٹل ریکارڈ تیار کرے گی جس میں ہر فرد کا شیئر اور حصہ واضح درج ہوگا۔</div>
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                  <div style="font-weight: 600; margin-bottom: 8px; font-size: 9px;">رجسٹریشن کنندہ کا بیان</div>
+                  <div>میں تصدیق کرتا/کرتی ہوں کہ میں نے اس معاہدے کی تمام شرائط پڑھ لی ہیں، سمجھ لی ہیں اور میں ان سے مکمل اتفاق کرتا/کرتی ہوں۔</div>
+                </div>
               </div>
             </div>
-          </div>
-
-          ${familyMembersHtml}
-
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+          ` : ""}
+          <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 11px;">
             Generated on ${new Date().toLocaleString()}
           </div>
         </body>
@@ -562,6 +551,45 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
         onOpenChange={setAddUserDialogOpen}
         onUserCreated={handleStatusUpdated}
       />
+      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Print Type</DialogTitle>
+            <DialogDescription>
+              Choose the type of document you want to print
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-4">
+            <Button
+              onClick={() => {
+                if (userToPrint) {
+                  handlePrint(userToPrint, "office")
+                  setPrintDialogOpen(false)
+                  setUserToPrint(null)
+                }
+              }}
+              className="w-full"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              For Office
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (userToPrint) {
+                  handlePrint(userToPrint, "user")
+                  setPrintDialogOpen(false)
+                  setUserToPrint(null)
+                }
+              }}
+              className="w-full"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              For User
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="flex items-center justify-between gap-4">
         <Input
           placeholder="Search by name, email, phone, NIC, or status..."
