@@ -475,6 +475,7 @@ export async function getAllSubadmins(): Promise<any[]> {
 
 export interface PaymentRecord {
   id?: string
+  userId?: string
   applicantName: string
   nic: string
   accountNumber: string
@@ -509,13 +510,36 @@ export async function savePaymentRecord(payment: PaymentRecord): Promise<void> {
 
 export async function savePaymentRecords(payments: PaymentRecord[]): Promise<void> {
   try {
+    const { getDoc } = await import("firebase/firestore")
     const batch = writeBatch(db)
     const paymentsCollection = collection(db, PAYMENTS_COLLECTION)
     
+    // Group payments by userId
+    const paymentsByUserId = new Map<string, PaymentRecord[]>()
     payments.forEach((payment) => {
-      // Create a new document reference with auto-generated ID
-      const paymentRef = doc(paymentsCollection)
-      batch.set(paymentRef, {
+      if (payment.userId) {
+        if (!paymentsByUserId.has(payment.userId)) {
+          paymentsByUserId.set(payment.userId, [])
+        }
+        paymentsByUserId.get(payment.userId)!.push(payment)
+      }
+    })
+    
+    // Process each user's payments
+    for (const [userId, userPayments] of paymentsByUserId.entries()) {
+      const paymentRef = doc(paymentsCollection, userId)
+      
+      // Get existing document to merge with existing payments
+      const existingDoc = await getDoc(paymentRef)
+      const existingData = existingDoc.data()
+      
+      // Get existing payments array or create new one
+      const existingPayments: PaymentRecord[] = existingData?.payments || []
+      
+      // Create new payment records for this batch
+      // Use Date object instead of serverTimestamp() for array items
+      const currentTimestamp = new Date()
+      const newPayments = userPayments.map((payment) => ({
         applicantName: payment.applicantName,
         nic: payment.nic,
         accountNumber: payment.accountNumber,
@@ -523,9 +547,45 @@ export async function savePaymentRecords(payments: PaymentRecord[]): Promise<voi
         paymentTotal: payment.paymentTotal,
         date: payment.date,
         paymentStatus: payment.paymentStatus || "received",
-        createdAt: serverTimestamp(),
+        createdAt: currentTimestamp,
+      }))
+      
+      // Merge existing payments with new ones
+      // Check if payment for same date already exists, if so, update it; otherwise add new
+      const updatedPayments = [...existingPayments]
+      
+      newPayments.forEach((newPayment) => {
+        const existingIndex = updatedPayments.findIndex(
+          (p: any) => p.date === newPayment.date
+        )
+        
+        if (existingIndex >= 0) {
+          // Update existing payment for this date
+          updatedPayments[existingIndex] = {
+            ...updatedPayments[existingIndex],
+            ...newPayment,
+            updatedAt: currentTimestamp,
+          }
+        } else {
+          // Add new payment
+          updatedPayments.push(newPayment)
+        }
       })
-    })
+      
+      // Get user info from first payment (all payments for same user should have same info)
+      const firstPayment = userPayments[0]
+      
+      batch.set(paymentRef, {
+        userId: userId,
+        applicantName: firstPayment.applicantName,
+        nic: firstPayment.nic,
+        accountNumber: firstPayment.accountNumber,
+        bankName: firstPayment.bankName,
+        payments: updatedPayments,
+        updatedAt: serverTimestamp(),
+        ...(existingData?.createdAt ? {} : { createdAt: serverTimestamp() }),
+      }, { merge: true })
+    }
     
     await batch.commit()
     console.log(`Saved ${payments.length} payment records successfully`)
@@ -543,17 +603,40 @@ export async function getAllPaymentRecords(): Promise<PaymentRecord[]> {
     const payments: PaymentRecord[] = []
     paymentsSnapshot.forEach((doc) => {
       const data = doc.data()
-      payments.push({
-        id: doc.id,
-        applicantName: data.applicantName || "",
-        nic: data.nic || "",
-        accountNumber: data.accountNumber || "",
-        bankName: data.bankName || "",
-        paymentTotal: data.paymentTotal || 0,
-        date: data.date || "",
-        paymentStatus: data.paymentStatus || "received",
-        createdAt: data.createdAt,
-      })
+      const userId = doc.id // Document ID is the userId
+      
+      // Check if document has new structure (payments array) or old structure (single payment)
+      if (data.payments && Array.isArray(data.payments)) {
+        // New structure: multiple payments per user
+        data.payments.forEach((payment: any) => {
+          payments.push({
+            id: `${userId}_${payment.date}`, // Unique ID combining userId and date
+            userId: userId,
+            applicantName: data.applicantName || payment.applicantName || "",
+            nic: data.nic || payment.nic || "",
+            accountNumber: data.accountNumber || payment.accountNumber || "",
+            bankName: data.bankName || payment.bankName || "",
+            paymentTotal: payment.paymentTotal || 0,
+            date: payment.date || "",
+            paymentStatus: payment.paymentStatus || "received",
+            createdAt: payment.createdAt || data.createdAt,
+          })
+        })
+      } else {
+        // Old structure: single payment per document (for backward compatibility)
+        payments.push({
+          id: doc.id,
+          userId: data.userId || doc.id,
+          applicantName: data.applicantName || "",
+          nic: data.nic || "",
+          accountNumber: data.accountNumber || "",
+          bankName: data.bankName || "",
+          paymentTotal: data.paymentTotal || 0,
+          date: data.date || "",
+          paymentStatus: data.paymentStatus || "received",
+          createdAt: data.createdAt,
+        })
+      }
     })
     
     // Sort by date descending (newest first)

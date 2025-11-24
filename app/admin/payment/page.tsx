@@ -15,6 +15,7 @@ import { ArrowLeft, DollarSign, Download, Save, History, ChevronLeft, ChevronRig
 import { AddPaymentRecordDialog } from "@/components/admin/add-payment-record-dialog"
 
 interface PaymentCalculation {
+  userId: string
   applicantName: string
   nic: string
   accountNumber: string
@@ -217,6 +218,7 @@ export default function PaymentPage() {
       const primaryCategory = applicantCategory
 
       return {
+        userId: user.id,
         applicantName: user.name || "N/A",
         nic: user.cnic || "N/A",
         accountNumber: user.accountNo || "N/A",

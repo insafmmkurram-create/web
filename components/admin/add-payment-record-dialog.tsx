@@ -19,6 +19,7 @@ interface AddPaymentRecordDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   calculations: Array<{
+    userId: string
     applicantName: string
     nic: string
     accountNumber: string
@@ -54,6 +55,7 @@ export function AddPaymentRecordDialog({
       setError(null)
 
       const paymentRecords: PaymentRecord[] = calculations.map((calc) => ({
+        userId: calc.userId,
         applicantName: calc.applicantName,
         nic: calc.nic,
         accountNumber: calc.accountNumber,
