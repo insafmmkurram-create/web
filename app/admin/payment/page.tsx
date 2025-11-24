@@ -9,10 +9,10 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, DollarSign, Download, Save, History } from "lucide-react"
+import { ArrowLeft, DollarSign, Download, Save, History, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import { AddPaymentRecordDialog } from "@/components/admin/add-payment-record-dialog"
-import { PaymentHistoryDialog } from "@/components/admin/payment-history-dialog"
 
 interface PaymentCalculation {
   applicantName: string
@@ -29,7 +29,8 @@ export default function PaymentPage() {
   const [amount, setAmount] = useState<string>("")
   const [calculations, setCalculations] = useState<PaymentCalculation[]>([])
   const [addRecordDialogOpen, setAddRecordDialogOpen] = useState(false)
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(0)
   const router = useRouter()
 
   useEffect(() => {
@@ -49,6 +50,7 @@ export default function PaymentPage() {
       setLoading(false)
     }
   }
+
 
   const calculateAge = (dob: string | undefined): number | null => {
     if (!dob) return null
@@ -91,6 +93,7 @@ export default function PaymentPage() {
   }
 
   const calculatePayments = () => {
+    setCurrentPage(0) // Reset to first page when recalculating
     const totalAmount = parseFloat(amount)
     if (isNaN(totalAmount) || totalAmount <= 0) {
       alert("Please enter a valid amount")
@@ -318,10 +321,19 @@ export default function PaymentPage() {
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
-            <Button variant="outline" onClick={() => router.push("/admin")} className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
+            <div className="flex items-center justify-between mb-4">
+              <Button variant="outline" onClick={() => router.push("/admin")}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Dashboard
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => router.push("/admin/payment/history")}
+              >
+                <History className="mr-2 h-4 w-4" />
+                Payment History
+              </Button>
+            </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Payment Distribution</h1>
             <p className="text-gray-600">Calculate and distribute payments to applicants</p>
           </div>
@@ -396,10 +408,6 @@ export default function PaymentPage() {
                   <div className="text-sm text-gray-600">
                     Total Distributed: <span className="font-bold">{formatCurrency(totalCalculated)}</span>
                   </div>
-                  <Button onClick={() => setHistoryDialogOpen(true)} variant="outline">
-                    <History className="mr-2 h-4 w-4" />
-                    Payment History
-                  </Button>
                   <Button onClick={() => setAddRecordDialogOpen(true)} variant="outline">
                     <Save className="mr-2 h-4 w-4" />
                     Add to Record
@@ -422,20 +430,115 @@ export default function PaymentPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {calculations.map((calc, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{calc.applicantName}</TableCell>
-                        <TableCell>{calc.nic}</TableCell>
-                        <TableCell>{calc.accountNumber}</TableCell>
-                        <TableCell>{calc.bankName}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {formatCurrency(calc.totalFamilyShare)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {(() => {
+                      const startIndex = currentPage * pageSize
+                      const endIndex = startIndex + pageSize
+                      const paginatedCalculations = calculations.slice(startIndex, endIndex)
+                      return paginatedCalculations.map((calc, index) => (
+                        <TableRow key={startIndex + index}>
+                          <TableCell className="font-medium">{calc.applicantName}</TableCell>
+                          <TableCell>{calc.nic}</TableCell>
+                          <TableCell>{calc.accountNumber}</TableCell>
+                          <TableCell>{calc.bankName}</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(calc.totalFamilyShare)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    })()}
                   </TableBody>
                 </Table>
               </div>
+              {calculations.length > pageSize && (
+                <div className="flex items-center justify-between flex-wrap gap-4 mt-4 pt-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(0)}
+                      disabled={currentPage === 0}
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                      disabled={currentPage === 0}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(calculations.length / pageSize) - 1, prev + 1))}
+                      disabled={currentPage >= Math.ceil(calculations.length / pageSize) - 1}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.ceil(calculations.length / pageSize) - 1)}
+                      disabled={currentPage >= Math.ceil(calculations.length / pageSize) - 1}
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Rows per page:</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8">
+                            {pageSize}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setPageSize(10)
+                              setCurrentPage(0)
+                            }}
+                          >
+                            10
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setPageSize(25)
+                              setCurrentPage(0)
+                            }}
+                          >
+                            25
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setPageSize(50)
+                              setCurrentPage(0)
+                            }}
+                          >
+                            50
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setPageSize(100)
+                              setCurrentPage(0)
+                            }}
+                          >
+                            100
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Page {currentPage + 1} of {Math.ceil(calculations.length / pageSize)} 
+                      {" "}({calculations.length} total)
+                    </div>
+                  </div>
+                </div>
+              )}
             </Card>
           ) : (
             <Card className="p-8 text-center">
@@ -454,10 +557,6 @@ export default function PaymentPage() {
             // Optionally refresh or show success message
             alert("Payment records saved successfully!")
           }}
-        />
-        <PaymentHistoryDialog
-          open={historyDialogOpen}
-          onOpenChange={setHistoryDialogOpen}
         />
       </main>
     </AuthGuard>

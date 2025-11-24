@@ -9,7 +9,6 @@ import {
   getSortedRowModel,
   ColumnDef,
   flexRender,
-  RowSelectionState,
 } from "@tanstack/react-table"
 import {
   Table,
@@ -21,7 +20,6 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,9 +38,9 @@ import { ChangeStatusDialog } from "@/components/admin/change-status-dialog"
 import { EditUserDialog } from "@/components/admin/edit-user-dialog"
 import { AddSubadminDialog } from "@/components/admin/add-subadmin-dialog"
 import { AddUserDialog } from "@/components/admin/add-user-dialog"
-import { User } from "@/lib/firebase-admin"
+import { User, deleteUser } from "@/lib/firebase-admin"
 import { useCurrentUserRole } from "@/hooks/use-current-user-role"
-import { ArrowUpDown, ChevronLeft, ChevronRight, MoreHorizontal, Edit, Trash2, FileCheck, Plus, Printer, DollarSign } from "lucide-react"
+import { ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, MoreHorizontal, Edit, Trash2, FileCheck, Plus, Printer, DollarSign, Filter } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface UsersTableProps {
@@ -51,7 +49,6 @@ interface UsersTableProps {
 }
 
 export function UsersTable({ data, onRefresh }: UsersTableProps) {
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -65,25 +62,6 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
   const isAdmin = userRole === "admin"
 
   const columns: ColumnDef<User>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
     {
       accessorKey: "name",
       header: ({ column }) => {
@@ -235,10 +213,18 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
-                onClick={() => {
-                  // TODO: Implement delete functionality
-                  if (confirm(`Are you sure you want to delete ${user.name || "this user"}?`)) {
-                    alert("Delete functionality coming soon")
+                onClick={async () => {
+                  if (confirm(`Are you sure you want to delete ${user.name || "this user"}? This action cannot be undone.`)) {
+                    try {
+                      await deleteUser(user.id)
+                      alert("User deleted successfully")
+                      if (onRefresh) {
+                        onRefresh()
+                      }
+                    } catch (error: any) {
+                      console.error("Error deleting user:", error)
+                      alert(`Failed to delete user: ${error.message}`)
+                    }
                   }
                 }}
               >
@@ -255,6 +241,8 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
   ]
 
   const [globalFilter, setGlobalFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [pageSize, setPageSize] = useState(10)
 
   const table = useReactTable({
     data,
@@ -263,8 +251,6 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
     globalFilterFn: (row, columnId, filterValue) => {
       const search = filterValue.toLowerCase()
       const name = row.original.name?.toLowerCase() || ""
@@ -276,9 +262,20 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
     },
     state: {
       globalFilter,
-      rowSelection,
+      pagination: {
+        pageIndex: 0,
+        pageSize: pageSize,
+      },
     },
     onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: (updater) => {
+      if (typeof updater === "function") {
+        const newPagination = updater(table.getState().pagination)
+        setPageSize(newPagination.pageSize)
+      } else {
+        setPageSize(updater.pageSize)
+      }
+    },
     initialState: {
       pagination: {
         pageSize: 10,
@@ -363,17 +360,13 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
             Family Members (${familyMembers.length})
           </h3>
           <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
-            ${familyMembers.map((member: any, index: number) => `
-              <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 10px; ${index === familyMembers.length - 1 ? 'border-bottom: none; margin-bottom: 0;' : ''}">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
-                  <div><strong>Name:</strong> ${member.name || "N/A"}</div>
-                  <div><strong>Relation:</strong> ${member.relation || "N/A"}</div>
-                  <div><strong>NIC:</strong> ${member.nic || "N/A"}</div>
-                  <div><strong>Share:</strong> ${member.share ? `${member.share}%` : "N/A"}</div>
-                  <div><strong>Gender:</strong> ${member.gender || "N/A"}</div>
-                  <div><strong>Marital Status:</strong> ${formatMaritalStatus(member.married)}</div>
-                  <div><strong>DOB:</strong> ${formatDate(member.dob)}</div>
-                </div>
+            ${familyMembers.map((member: any) => `
+              <div style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
+                <strong>Name:</strong> ${member.name || "N/A"}, 
+                <strong>Relation:</strong> ${member.relation || "N/A"}, 
+                <strong>NIC:</strong> ${member.nic || "N/A"}, 
+                <strong>DOB:</strong> ${formatDate(member.dob)}, 
+                <strong>Share:</strong> ${member.share ? `${member.share}%` : "N/A"}
               </div>
             `).join("")}
           </div>
@@ -470,13 +463,6 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
             <h1>Insaf Mining & Minerals Private Limited - Registration Details</h1>
           </div>
 
-          <div class="user-image">
-            ${user.imageUrl 
-              ? `<img src="${user.imageUrl}" alt="${user.name || "User"}" />` 
-              : `<div class="user-image-placeholder">No Image</div>`
-            }
-          </div>
-
           ${applicantDetailsHtml}
           ${familyMembersHtml}
           ${printType === "office" ? `
@@ -504,6 +490,20 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
                 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
                   <div style="font-weight: 600; margin-bottom: 8px; font-size: 9px;">رجسٹریشن کنندہ کا بیان</div>
                   <div>میں تصدیق کرتا/کرتی ہوں کہ میں نے اس معاہدے کی تمام شرائط پڑھ لی ہیں، سمجھ لی ہیں اور میں ان سے مکمل اتفاق کرتا/کرتی ہوں۔</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 30px; page-break-inside: avoid; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+              <div style="display: flex; justify-content: space-between; gap: 40px; font-size: 12px;">
+                <div style="flex: 1; text-align: center;">
+                  <div style="margin-bottom: 8px; font-weight: 600;">Applicant Signature</div>
+                  <div style="border-bottom: 1px solid #374151; height: 50px; margin-bottom: 10px;"></div>
+                  <div style="color: #6b7280; font-size: 10px;">${user.name || "N/A"}</div>
+                </div>
+                <div style="flex: 1; text-align: center;">
+                  <div style="margin-bottom: 8px; font-weight: 600;">Applicant Thumb</div>
+                  <div style="border: 1px solid #374151; height: 50px; width: 80px; margin: 0 auto 10px; border-radius: 4px; background-color: #f9fafb;"></div>
+                  <div style="color: #6b7280; font-size: 10px;">${user.name || "N/A"}</div>
                 </div>
               </div>
             </div>
@@ -591,12 +591,36 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
         </DialogContent>
       </Dialog>
       <div className="flex items-center justify-between gap-4">
-        <Input
-          placeholder="Search by name, email, phone, NIC, or status..."
-          value={globalFilter}
-          onChange={(event) => setGlobalFilter(event.target.value)}
-          className="max-w-sm"
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Search by name, email, phone, NIC, or status..."
+            value={globalFilter}
+            onChange={(event) => setGlobalFilter(event.target.value)}
+            className="max-w-sm"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4" />
+                Status: {statusFilter === "all" ? "All" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                All
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("pending")}>
+                Pending
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("accepted")}>
+                Accepted
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter("rejected")}>
+                Rejected
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="flex items-center gap-4">
           <Button onClick={() => router.push("/admin/payment")}>
             <DollarSign className="mr-2 h-4 w-4" />
@@ -621,13 +645,17 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
             </DropdownMenuContent>
           </DropdownMenu>
           <div className="text-sm text-gray-600">
-            {table.getFilteredRowModel().rows.length} of {data.length} applicants
+            {(() => {
+              let filteredRows = table.getFilteredRowModel().rows
+              if (statusFilter !== "all") {
+                filteredRows = filteredRows.filter((row) => {
+                  const rowStatus = (row.original.status || "").toLowerCase()
+                  return rowStatus === statusFilter.toLowerCase()
+                })
+              }
+              return filteredRows.length
+            })()} of {data.length} applicants
           </div>
-          {Object.keys(rowSelection).length > 0 && (
-            <div className="text-sm text-amber-800 font-medium">
-              {Object.keys(rowSelection).length} selected
-            </div>
-          )}
         </div>
       </div>
 
@@ -647,9 +675,18 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+            {(() => {
+              // Apply status filter
+              let filteredRows = table.getRowModel().rows
+              if (statusFilter !== "all") {
+                filteredRows = filteredRows.filter((row) => {
+                  const rowStatus = (row.original.status || "").toLowerCase()
+                  return rowStatus === statusFilter.toLowerCase()
+                })
+              }
+              return filteredRows.length ? (
+                filteredRows.map((row) => (
+                <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -657,26 +694,35 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
                   ))}
                 </TableRow>
               ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No applicants found.
-                </TableCell>
-              </TableRow>
-            )}
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No applicants found.
+                  </TableCell>
+                </TableRow>
+              )
+            })()}
           </TableBody>
         </Table>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
+            <ChevronLeft className="h-4 w-4" />
             Previous
           </Button>
           <Button
@@ -686,11 +732,79 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
             disabled={!table.getCanNextPage()}
           >
             Next
-            <ChevronRight className="h-4 w-4 ml-1" />
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronsRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="text-sm text-gray-600">
-          Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Rows per page:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8">
+                  {pageSize}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setPageSize(10)
+                    table.setPageSize(10)
+                    table.setPageIndex(0)
+                  }}
+                >
+                  10
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setPageSize(25)
+                    table.setPageSize(25)
+                    table.setPageIndex(0)
+                  }}
+                >
+                  25
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setPageSize(50)
+                    table.setPageSize(50)
+                    table.setPageIndex(0)
+                  }}
+                >
+                  50
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setPageSize(100)
+                    table.setPageSize(100)
+                    table.setPageIndex(0)
+                  }}
+                >
+                  100
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="text-sm text-gray-600">
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()} 
+            {" "}({(() => {
+              let filteredRows = table.getFilteredRowModel().rows
+              if (statusFilter !== "all") {
+                filteredRows = filteredRows.filter((row) => {
+                  const rowStatus = (row.original.status || "").toLowerCase()
+                  return rowStatus === statusFilter.toLowerCase()
+                })
+              }
+              return filteredRows.length
+            })()} total)
+          </div>
         </div>
       </div>
     </div>

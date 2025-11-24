@@ -481,6 +481,7 @@ export interface PaymentRecord {
   bankName: string
   paymentTotal: number
   date: string // ISO date string
+  paymentStatus?: string
   createdAt?: any
 }
 
@@ -496,6 +497,7 @@ export async function savePaymentRecord(payment: PaymentRecord): Promise<void> {
       bankName: payment.bankName,
       paymentTotal: payment.paymentTotal,
       date: payment.date,
+      paymentStatus: payment.paymentStatus || "received",
       createdAt: serverTimestamp(),
     })
     console.log("Payment record saved successfully")
@@ -520,6 +522,7 @@ export async function savePaymentRecords(payments: PaymentRecord[]): Promise<voi
         bankName: payment.bankName,
         paymentTotal: payment.paymentTotal,
         date: payment.date,
+        paymentStatus: payment.paymentStatus || "received",
         createdAt: serverTimestamp(),
       })
     })
@@ -548,6 +551,7 @@ export async function getAllPaymentRecords(): Promise<PaymentRecord[]> {
         bankName: data.bankName || "",
         paymentTotal: data.paymentTotal || 0,
         date: data.date || "",
+        paymentStatus: data.paymentStatus || "received",
         createdAt: data.createdAt,
       })
     })
@@ -672,21 +676,51 @@ export async function updateUserPassword(userId: string, newPassword: string): P
 
 export async function deleteSubadmin(subadminId: string): Promise<void> {
   try {
-    const { deleteDoc } = await import("firebase/firestore")
-    const { deleteUser } = await import("firebase/auth")
-    
-    // Delete from Firestore
-    const userRef = doc(db, USERS_COLLECTION, subadminId)
-    await deleteDoc(userRef)
-    
-    // Note: Deleting user from Auth requires Admin SDK
-    // For now, we'll just delete from Firestore
-    // The user will still exist in Auth but won't have access
-    console.log(`Deleted subadmin ${subadminId} from Firestore`)
-    console.warn("User still exists in Firebase Auth. Use Firebase Admin SDK to fully delete.")
+    // Call API route to delete from both Auth and Firestore
+    const response = await fetch("/api/admin/delete-user", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId: subadminId
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to delete subadmin")
+    }
+
+    console.log(`Deleted subadmin ${subadminId} from Authentication and Firestore`)
   } catch (error: any) {
     console.error("Error deleting subadmin:", error)
     throw new Error(error.message || "Failed to delete subadmin")
+  }
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  try {
+    // Call API route to delete from both Auth and Firestore
+    const response = await fetch("/api/admin/delete-user", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId: userId
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || "Failed to delete user")
+    }
+
+    console.log(`Deleted user ${userId} from Authentication and Firestore`)
+  } catch (error: any) {
+    console.error("Error deleting user:", error)
+    throw new Error(error.message || "Failed to delete user")
   }
 }
 

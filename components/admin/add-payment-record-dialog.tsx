@@ -60,6 +60,7 @@ export function AddPaymentRecordDialog({
         bankName: calc.bankName,
         paymentTotal: calc.totalFamilyShare,
         date: date,
+        paymentStatus: "received",
       }))
 
       await savePaymentRecords(paymentRecords)
