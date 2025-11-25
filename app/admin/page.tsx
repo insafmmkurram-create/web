@@ -93,11 +93,90 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin])
 
+  const calculateAge = (dob: string | undefined): number | null => {
+    if (!dob) return null
+    try {
+      const dateObj = typeof dob === "string" ? new Date(dob.split("T")[0]) : new Date(dob)
+      if (isNaN(dateObj.getTime())) return null
+      const today = new Date()
+      let age = today.getFullYear() - dateObj.getFullYear()
+      const monthDiff = today.getMonth() - dateObj.getMonth()
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateObj.getDate())) {
+        age--
+      }
+      return age
+    } catch {
+      return null
+    }
+  }
+
+  const isMale = (gender: string | undefined): boolean => {
+    const genderLower = gender?.toLowerCase()
+    return genderLower === "male" || genderLower === "m"
+  }
+
+  const isFemale = (gender: string | undefined): boolean => {
+    const genderLower = gender?.toLowerCase()
+    return genderLower === "female" || genderLower === "f"
+  }
+
+  const isBelow18 = (dob: string | undefined): boolean => {
+    const age = calculateAge(dob)
+    return age !== null && age < 18
+  }
+
+  // Filter accepted users, excluding admin and subadmin
+  const acceptedUsers = users.filter((u) => 
+    u.status === "accepted" && 
+    u.role !== "admin" && 
+    u.role !== "subadmin"
+  )
+  
+  // Calculate totals including family members
+  let totalMales = 0
+  let totalFemales = 0
+  let totalKids = 0
+
+  acceptedUsers.forEach((user) => {
+    // Count the applicant
+    if (isBelow18(user.dob)) {
+      // If below 18, count as kid only
+      totalKids++
+    } else {
+      // If 18 or above, count by gender
+      if (isMale(user.gender)) {
+        totalMales++
+      } else if (isFemale(user.gender)) {
+        totalFemales++
+      }
+    }
+
+    // Count family members
+    if (user.familyMembers && user.familyMembers.length > 0) {
+      user.familyMembers.forEach((member: any) => {
+        if (isBelow18(member.dob)) {
+          // If below 18, count as kid only
+          totalKids++
+        } else {
+          // If 18 or above, count by gender
+          if (isMale(member.gender)) {
+            totalMales++
+          } else if (isFemale(member.gender)) {
+            totalFemales++
+          }
+        }
+      })
+    }
+  })
+  
   const stats = {
     total: users.length,
-    accepted: users.filter((u) => u.status === "accepted").length,
+    accepted: acceptedUsers.length,
     rejected: users.filter((u) => u.status === "rejected").length,
     pending: users.filter((u) => u.status === "pending").length,
+    acceptedMales: totalMales,
+    acceptedFemales: totalFemales,
+    acceptedKids: totalKids,
   }
 
   if (loading) {
@@ -196,6 +275,9 @@ export default function AdminPage() {
                 accepted={stats.accepted}
                 rejected={stats.rejected}
                 pending={stats.pending}
+                acceptedMales={stats.acceptedMales}
+                acceptedFemales={stats.acceptedFemales}
+                acceptedKids={stats.acceptedKids}
               />
 
               <Card className="p-6">
