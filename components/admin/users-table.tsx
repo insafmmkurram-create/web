@@ -311,6 +311,47 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
       return married ? "Married" : "Unmarried"
     }
 
+    // Calculate age
+    const calculateAge = (dob: string | undefined): number | null => {
+      if (!dob) return null
+      try {
+        const dateObj = typeof dob === "string" ? new Date(dob.split("T")[0]) : new Date(dob)
+        if (isNaN(dateObj.getTime())) return null
+        const today = new Date()
+        let age = today.getFullYear() - dateObj.getFullYear()
+        const monthDiff = today.getMonth() - dateObj.getMonth()
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateObj.getDate())) {
+          age--
+        }
+        return age
+      } catch {
+        return null
+      }
+    }
+
+    // Determine applicant share percentage based on category
+    const getApplicantSharePercentage = (): number => {
+      const age = calculateAge(user.dob)
+      
+      // If below 18, return 5%
+      if (age !== null && age < 18) {
+        return 5
+      }
+      
+      // Check gender for adults
+      const genderLower = user.gender?.toLowerCase()
+      if (genderLower === "male" || genderLower === "m") {
+        return 30 // Male above 18: 30%
+      } else if (genderLower === "female" || genderLower === "f") {
+        return 15 // Female above 18: 15%
+      }
+      
+      // Default to 30% if gender/age not clear
+      return 30
+    }
+
+    const applicantShare = getApplicantSharePercentage()
+
     // Status badge color
     const statusColor = user.status === "accepted" 
       ? "#10b981" 
@@ -341,6 +382,7 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
             <div><strong>Tehsil:</strong> ${user.tehsil || "N/A"}</div>
             <div><strong>Bank Name:</strong> ${user.bankName || "N/A"}</div>
             <div><strong>Account Number:</strong> ${user.accountNo || "N/A"}</div>
+            <div><strong>Share Percentage:</strong> ${applicantShare}%</div>
             <div><strong>Status:</strong> 
               <span style="background-color: ${statusColor}20; color: ${statusColor}; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 500;">
                 ${(user.status || "PENDING").toUpperCase()}
@@ -351,7 +393,7 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
       </div>
     `
 
-    // Build family members HTML
+    // Build family members HTML in table format
     const familyMembers = user.familyMembers || []
     const familyMembersHtml = familyMembers.length > 0
       ? `
@@ -359,16 +401,31 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
           <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 8px; color: #374151;">
             Family Members (${familyMembers.length})
           </h3>
-          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
-            ${familyMembers.map((member: any) => `
-              <div style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
-                <strong>Name:</strong> ${member.name || "N/A"}, 
-                <strong>Relation:</strong> ${member.relation || "N/A"}, 
-                <strong>NIC:</strong> ${member.nic || "N/A"}, 
-                <strong>DOB:</strong> ${formatDate(member.dob)}, 
-                <strong>Share:</strong> ${member.share ? `${member.share}%` : "N/A"}
-              </div>
-            `).join("")}
+          <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                  <th style="padding: 10px; text-align: left; font-weight: 600; border-right: 1px solid #e5e7eb;">Name</th>
+                  <th style="padding: 10px; text-align: left; font-weight: 600; border-right: 1px solid #e5e7eb;">Relation</th>
+                  <th style="padding: 10px; text-align: left; font-weight: 600; border-right: 1px solid #e5e7eb;">NIC</th>
+                  <th style="padding: 10px; text-align: left; font-weight: 600; border-right: 1px solid #e5e7eb;">Date of Birth</th>
+                  <th style="padding: 10px; text-align: left; font-weight: 600; border-right: 1px solid #e5e7eb;">Gender</th>
+                  <th style="padding: 10px; text-align: center; font-weight: 600;">Share (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${familyMembers.map((member: any, index: number) => `
+                  <tr style="border-bottom: 1px solid #f3f4f6; ${index % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f9fafb;'}">
+                    <td style="padding: 10px; border-right: 1px solid #e5e7eb;">${member.name || "N/A"}</td>
+                    <td style="padding: 10px; border-right: 1px solid #e5e7eb;">${member.relation || "N/A"}</td>
+                    <td style="padding: 10px; border-right: 1px solid #e5e7eb;">${member.nic || "N/A"}</td>
+                    <td style="padding: 10px; border-right: 1px solid #e5e7eb;">${formatDate(member.dob)}</td>
+                    <td style="padding: 10px; border-right: 1px solid #e5e7eb;">${member.gender || "N/A"}</td>
+                    <td style="padding: 10px; text-align: center; font-weight: 500;">${member.share ? `${member.share}%` : "N/A"}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
           </div>
         </div>
       `
