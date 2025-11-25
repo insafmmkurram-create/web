@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, DollarSign, Download, Save, History, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import { AddPaymentRecordDialog } from "@/components/admin/add-payment-record-dialog"
@@ -29,6 +30,7 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true)
   const [amount, setAmount] = useState<string>("")
   const [calculations, setCalculations] = useState<PaymentCalculation[]>([])
+  const [selectedApplicants, setSelectedApplicants] = useState<Set<string>>(new Set())
   const [addRecordDialogOpen, setAddRecordDialogOpen] = useState(false)
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(0)
@@ -95,6 +97,7 @@ export default function PaymentPage() {
 
   const calculatePayments = () => {
     setCurrentPage(0) // Reset to first page when recalculating
+    setSelectedApplicants(new Set()) // Reset selections when recalculating
     const totalAmount = parseFloat(amount)
     if (isNaN(totalAmount) || totalAmount <= 0) {
       alert("Please enter a valid amount")
@@ -276,6 +279,34 @@ export default function PaymentPage() {
   const totalCalculated = calculations.reduce((sum, calc) => sum + calc.totalFamilyShare, 0)
   const totalAmountNum = parseFloat(amount) || 0
 
+  // Get selected calculations
+  const selectedCalculations = calculations.filter(calc => selectedApplicants.has(calc.userId))
+  
+  // Select all / deselect all handler
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allUserIds = new Set(calculations.map(calc => calc.userId))
+      setSelectedApplicants(allUserIds)
+    } else {
+      setSelectedApplicants(new Set())
+    }
+  }
+
+  // Check if all items are selected
+  const allSelected = calculations.length > 0 && 
+    calculations.every(calc => selectedApplicants.has(calc.userId))
+
+  // Toggle individual selection
+  const handleToggleSelection = (userId: string) => {
+    const newSelected = new Set(selectedApplicants)
+    if (newSelected.has(userId)) {
+      newSelected.delete(userId)
+    } else {
+      newSelected.add(userId)
+    }
+    setSelectedApplicants(newSelected)
+  }
+
   const exportToExcel = () => {
     if (calculations.length === 0) {
       alert("No data to export")
@@ -408,9 +439,18 @@ export default function PaymentPage() {
                 <h2 className="text-2xl font-bold text-gray-900">Payment Distribution</h2>
                 <div className="flex items-center gap-4">
                   <div className="text-sm text-gray-600">
+                    {selectedApplicants.size > 0 && (
+                      <span className="mr-4">
+                        {selectedApplicants.size} selected
+                      </span>
+                    )}
                     Total Distributed: <span className="font-bold">{formatCurrency(totalCalculated)}</span>
                   </div>
-                  <Button onClick={() => setAddRecordDialogOpen(true)} variant="outline">
+                  <Button 
+                    onClick={() => setAddRecordDialogOpen(true)} 
+                    variant="outline"
+                    disabled={selectedApplicants.size === 0}
+                  >
                     <Save className="mr-2 h-4 w-4" />
                     Add to Record
                   </Button>
@@ -424,6 +464,13 @@ export default function PaymentPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
                       <TableHead>Applicant Name</TableHead>
                       <TableHead>NIC</TableHead>
                       <TableHead>Account Number</TableHead>
@@ -438,6 +485,13 @@ export default function PaymentPage() {
                       const paginatedCalculations = calculations.slice(startIndex, endIndex)
                       return paginatedCalculations.map((calc, index) => (
                         <TableRow key={startIndex + index}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedApplicants.has(calc.userId)}
+                              onCheckedChange={() => handleToggleSelection(calc.userId)}
+                              aria-label={`Select ${calc.applicantName}`}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">{calc.applicantName}</TableCell>
                           <TableCell>{calc.nic}</TableCell>
                           <TableCell>{calc.accountNumber}</TableCell>
@@ -554,10 +608,11 @@ export default function PaymentPage() {
         <AddPaymentRecordDialog
           open={addRecordDialogOpen}
           onOpenChange={setAddRecordDialogOpen}
-          calculations={calculations}
+          calculations={selectedCalculations}
           onRecordAdded={() => {
             // Optionally refresh or show success message
             alert("Payment records saved successfully!")
+            setSelectedApplicants(new Set()) // Clear selections after saving
           }}
         />
       </main>
