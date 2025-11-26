@@ -1,6 +1,6 @@
 "use client"
 
-import { collection, getDocs, query, where, DocumentData, doc, setDoc, serverTimestamp, writeBatch, addDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, DocumentData, doc, setDoc, serverTimestamp, writeBatch, addDoc, deleteDoc, updateDoc, orderBy } from "firebase/firestore"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { auth, db } from "./firebase"
 
@@ -804,6 +804,88 @@ export async function deleteUser(userId: string): Promise<void> {
   } catch (error: any) {
     console.error("Error deleting user:", error)
     throw new Error(error.message || "Failed to delete user")
+  }
+}
+
+// News Collection Functions
+const NEWS_COLLECTION = "news"
+
+export interface News {
+  id: string
+  title: string
+  content: string
+  createdAt?: any
+  updatedAt?: any
+}
+
+export async function getAllNews(): Promise<News[]> {
+  try {
+    const newsCollection = collection(db, NEWS_COLLECTION)
+    const newsQuery = query(newsCollection, orderBy("createdAt", "desc"))
+    const newsSnapshot = await getDocs(newsQuery)
+    
+    const newsList: News[] = []
+    newsSnapshot.forEach((doc) => {
+      const data = doc.data()
+      newsList.push({
+        id: doc.id,
+        title: data.title || "",
+        content: data.content || "",
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      })
+    })
+    
+    return newsList
+  } catch (error: any) {
+    console.error("Error fetching news:", error)
+    throw new Error(error.message || "Failed to fetch news")
+  }
+}
+
+export async function createNews(newsData: { title: string; content: string }): Promise<string> {
+  try {
+    const newsCollection = collection(db, NEWS_COLLECTION)
+    const docRef = await addDoc(newsCollection, {
+      title: newsData.title,
+      content: newsData.content,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+    
+    console.log(`Created news with ID: ${docRef.id}`)
+    return docRef.id
+  } catch (error: any) {
+    console.error("Error creating news:", error)
+    throw new Error(error.message || "Failed to create news")
+  }
+}
+
+export async function updateNews(newsId: string, newsData: { title: string; content: string }): Promise<void> {
+  try {
+    const newsRef = doc(db, NEWS_COLLECTION, newsId)
+    await updateDoc(newsRef, {
+      title: newsData.title,
+      content: newsData.content,
+      updatedAt: serverTimestamp(),
+    })
+    
+    console.log(`Updated news with ID: ${newsId}`)
+  } catch (error: any) {
+    console.error("Error updating news:", error)
+    throw new Error(error.message || "Failed to update news")
+  }
+}
+
+export async function deleteNews(newsId: string): Promise<void> {
+  try {
+    const newsRef = doc(db, NEWS_COLLECTION, newsId)
+    await deleteDoc(newsRef)
+    
+    console.log(`Deleted news with ID: ${newsId}`)
+  } catch (error: any) {
+    console.error("Error deleting news:", error)
+    throw new Error(error.message || "Failed to delete news")
   }
 }
 

@@ -13,7 +13,7 @@ import { checkFirebaseConfig } from "@/lib/firebase-debug"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useCurrentUserRole } from "@/hooks/use-current-user-role"
-import { Loader2, LogOut, Users } from "lucide-react"
+import { Loader2, LogOut, Users, Newspaper } from "lucide-react"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { useRouter } from "next/navigation"
@@ -248,18 +248,27 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <Button 
-                variant={showSubadmins ? "default" : "outline"} 
-                onClick={() => {
-                  setShowSubadmins(!showSubadmins)
-                  if (!showSubadmins) {
-                    fetchSubadmins()
-                  }
-                }}
-              >
-                <Users className="mr-2 h-4 w-4" />
-                {showSubadmins ? "View Applicants" : "View Subadmins"}
-              </Button>
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => router.push("/admin/news")}
+                >
+                  <Newspaper className="mr-2 h-4 w-4" />
+                  News
+                </Button>
+                <Button 
+                  variant={showSubadmins ? "default" : "outline"} 
+                  onClick={() => {
+                    setShowSubadmins(!showSubadmins)
+                    if (!showSubadmins) {
+                      fetchSubadmins()
+                    }
+                  }}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  {showSubadmins ? "View Applicants" : "View Subadmins"}
+                </Button>
+              </>
             )}
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
