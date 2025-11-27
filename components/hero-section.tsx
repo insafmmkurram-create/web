@@ -70,9 +70,9 @@ export function HeroSection() {
             </div>
             <div className="space-y-4 pt-8">
               <div className="bg-white/10 backdrop-blur rounded-lg p-4">
-                <h3 className="text-white font-bold text-sm mb-2">HUNZA RUBY</h3>
+                <h3 className="text-white font-bold text-sm mb-2">Emerald</h3>
                 <p className="text-gray-200 text-xs leading-relaxed">
-                  High-quality rubies from the marble beds of the South Karakoram region.
+                  High-quality emeralds from the emerald mines of Pakistan.
                 </p>
               </div>
             </div>
