@@ -16,6 +16,8 @@ export function HeroSection() {
   ]
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const downloadUrl = "/app.apk"
+  const tickerMessage = "Download the Insaf mobile app — tap to install"
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -26,7 +28,29 @@ export function HeroSection() {
   }, [images.length])
 
   return (
-    <div className="relative w-full h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+    <>
+      {/* Download ticker (always on top, above hero image/content) */}
+      <div className="w-full bg-amber-400 text-black overflow-hidden shadow-lg">
+        <div className="flex items-center gap-2 px-4 py-2">
+          <div className="ticker-track font-semibold text-sm uppercase tracking-wide">
+            {[0, 1].map((item) => (
+              <a
+                key={item}
+                href={downloadUrl}
+                download
+                className="mr-8 inline-flex items-center gap-2 hover:text-black/70 transition-colors"
+                aria-label="Download the Insaf mobile application APK"
+              >
+                <span>📱</span>
+                {tickerMessage}
+                <span className="underline">Click here</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="relative w-full h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+
       {/* Background Images with fade transition */}
       <div className="absolute inset-0">
         {images.map((image, index) => (
@@ -80,5 +104,6 @@ export function HeroSection() {
         </div>
       </div>
     </div>
+    </>
   )
 }

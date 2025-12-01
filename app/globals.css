@@ -123,3 +123,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes ticker-slide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-track {
+  display: inline-flex;
+  min-width: 200%;
+  animation: ticker-slide 18s linear infinite;
+  white-space: nowrap;
+}
