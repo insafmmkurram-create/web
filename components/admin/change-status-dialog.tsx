@@ -14,6 +14,7 @@ import { User } from "@/lib/firebase-admin"
 import { updateUserStatus, updateRegistrationStatus } from "@/lib/firebase-admin"
 import { Loader2, CheckCircle, XCircle } from "lucide-react"
 import Image from "next/image"
+import { useCurrentUserRole } from "@/hooks/use-current-user-role"
 
 interface ChangeStatusDialogProps {
   user: User | null
@@ -30,11 +31,13 @@ export function ChangeStatusDialog({
 }: ChangeStatusDialogProps) {
   const [loading, setLoading] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const { userRole } = useCurrentUserRole()
+  const isAdmin = userRole === "admin"
 
   if (!user) return null
 
   const handleStatusChange = async (newStatus: "accepted" | "rejected") => {
-    if (!user.id) return
+    if (!user.id || !isAdmin) return // Prevent status change for subadmins
 
     try {
       setLoading(true)
@@ -242,31 +245,39 @@ export function ChangeStatusDialog({
           >
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={() => handleStatusChange("rejected")}
-            disabled={loading}
-            className="gap-2"
-          >
-            {updatingStatus === "rejected" && loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <XCircle className="h-4 w-4" />
-            )}
-            Reject
-          </Button>
-          <Button
-            onClick={() => handleStatusChange("accepted")}
-            disabled={loading}
-            className="gap-2 bg-green-600 hover:bg-green-700"
-          >
-            {updatingStatus === "accepted" && loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle className="h-4 w-4" />
-            )}
-            Accept
-          </Button>
+          {isAdmin ? (
+            <>
+              <Button
+                variant="destructive"
+                onClick={() => handleStatusChange("rejected")}
+                disabled={loading}
+                className="gap-2"
+              >
+                {updatingStatus === "rejected" && loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+                Reject
+              </Button>
+              <Button
+                onClick={() => handleStatusChange("accepted")}
+                disabled={loading}
+                className="gap-2 bg-green-600 hover:bg-green-700"
+              >
+                {updatingStatus === "accepted" && loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4" />
+                )}
+                Accept
+              </Button>
+            </>
+          ) : (
+            <div className="text-sm text-gray-500 italic">
+              Only administrators can change user status
+            </div>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

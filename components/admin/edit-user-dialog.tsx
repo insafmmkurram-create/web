@@ -16,6 +16,7 @@ import { User } from "@/lib/firebase-admin"
 import { updateUserData, updateRegistrationData, updateUserEmail, updateUserPassword } from "@/lib/firebase-admin"
 import { Loader2, Trash2, Save, Plus } from "lucide-react"
 import Image from "next/image"
+import { useCurrentUserRole } from "@/hooks/use-current-user-role"
 
 interface EditUserDialogProps {
   user: User | null
@@ -35,6 +36,8 @@ export function EditUserDialog({
   const [familyMembers, setFamilyMembers] = useState<any[]>([])
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const { userRole } = useCurrentUserRole()
+  const isAdmin = userRole === "admin"
 
   useEffect(() => {
     if (user) {
@@ -82,12 +85,14 @@ export function EditUserDialog({
   }
 
   const handleDeleteFamilyMember = (index: number) => {
+    if (!isAdmin) return // Prevent deletion for subadmins
     if (confirm("Are you sure you want to delete this family member?")) {
       setFamilyMembers((prev) => prev.filter((_, i) => i !== index))
     }
   }
 
   const handleAddFamilyMember = () => {
+    if (!isAdmin) return // Prevent adding for subadmins
     setFamilyMembers((prev) => [
       ...prev,
       {
@@ -399,44 +404,50 @@ export function EditUserDialog({
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Family Members ({familyMembers.length})</h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAddFamilyMember}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Family Member
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddFamilyMember}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Family Member
+                </Button>
+              )}
             </div>
             <div className="space-y-4 max-h-96 overflow-y-auto border rounded-lg p-4">
               {familyMembers.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-sm text-gray-500 mb-4">No family members</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddFamilyMember}
-                    className="gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Family Member
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddFamilyMember}
+                      className="gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Family Member
+                    </Button>
+                  )}
                 </div>
               ) : (
                 familyMembers.map((member: any, index: number) => (
                   <div key={index} className="border rounded-lg p-4 bg-gray-50">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-medium">Family Member {index + 1}</h4>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteFamilyMember(index)}
-                        className="gap-2"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteFamilyMember(index)}
+                          className="gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>

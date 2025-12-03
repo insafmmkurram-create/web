@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, DollarSign, Download, Save, History, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import { AddPaymentRecordDialog } from "@/components/admin/add-payment-record-dialog"
+import { useCurrentUserRole } from "@/hooks/use-current-user-role"
 
 interface PaymentCalculation {
   userId: string
@@ -35,6 +36,8 @@ export default function PaymentPage() {
   const [pageSize, setPageSize] = useState(10)
   const [currentPage, setCurrentPage] = useState(0)
   const router = useRouter()
+  const { userRole, loading: roleLoading } = useCurrentUserRole()
+  const isAdmin = userRole === "admin"
 
   useEffect(() => {
     fetchUsers()
@@ -371,6 +374,15 @@ export default function PaymentPage() {
             <p className="text-gray-600">Calculate and distribute payments to applicants</p>
           </div>
 
+          {!isAdmin && (
+            <Card className="p-8 text-center mb-6">
+              <p className="text-gray-600 text-lg">
+                Payment distribution feature is only available for administrators.
+              </p>
+            </Card>
+          )}
+
+          {isAdmin && (
           <Card className="p-6 mb-6">
             <div className="space-y-4">
               <div className="flex items-center gap-4">
@@ -428,12 +440,13 @@ export default function PaymentPage() {
               )}
             </div>
           </Card>
+          )}
 
-          {loading ? (
+          {isAdmin && loading ? (
             <Card className="p-8 text-center">
               <p className="text-gray-600">Loading applicants...</p>
             </Card>
-          ) : calculations.length > 0 ? (
+          ) : isAdmin && calculations.length > 0 ? (
             <Card className="p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">Payment Distribution</h2>
@@ -596,13 +609,13 @@ export default function PaymentPage() {
                 </div>
               )}
             </Card>
-          ) : (
+          ) : isAdmin ? (
             <Card className="p-8 text-center">
               <p className="text-gray-600">
                 Enter an amount and click "Calculate Payments" to see the distribution
               </p>
             </Card>
-          )}
+          ) : null}
         </div>
         <Footer />
         <AddPaymentRecordDialog

@@ -57,9 +57,8 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const [userToPrint, setUserToPrint] = useState<User | null>(null)
   const { userRole } = useCurrentUserRole()
-  const router = useRouter()
-  
   const isAdmin = userRole === "admin"
+  const router = useRouter()
 
   const columns: ColumnDef<User>[] = [
     {
@@ -184,15 +183,17 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedUser(user)
-                  setStatusDialogOpen(true)
-                }}
-              >
-                <FileCheck className="mr-2 h-4 w-4" />
-                Change Status
-              </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedUser(user)
+                    setStatusDialogOpen(true)
+                  }}
+                >
+                  <FileCheck className="mr-2 h-4 w-4" />
+                  Change Status
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={() => {
                   setUserToPrint(user)
