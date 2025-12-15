@@ -243,7 +243,45 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
 
   const [globalFilter, setGlobalFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [duplicateCnicFilter, setDuplicateCnicFilter] = useState<boolean>(false)
   const [pageSize, setPageSize] = useState(10)
+
+  // Function to find users with duplicate CNICs in family members
+  const findUsersWithDuplicateCnics = (): Set<string> => {
+    const cnicToUsers = new Map<string, string[]>() // CNIC -> array of user IDs
+    
+    // Collect all CNICs from family members
+    data.forEach((user) => {
+      const familyMembers = user.familyMembers || []
+      familyMembers.forEach((member: any) => {
+        const cnic = member.nic
+        if (cnic && cnic !== "N/A" && cnic.trim() !== "") {
+          if (!cnicToUsers.has(cnic)) {
+            cnicToUsers.set(cnic, [])
+          }
+          cnicToUsers.get(cnic)!.push(user.id)
+        }
+      })
+    })
+    
+    // Find CNICs that appear in multiple users
+    const duplicateUserIds = new Set<string>()
+    cnicToUsers.forEach((userIds, cnic) => {
+      if (userIds.length > 1) {
+        // This CNIC appears in multiple users, mark all those users
+        userIds.forEach((userId) => duplicateUserIds.add(userId))
+      }
+    })
+    
+    return duplicateUserIds
+  }
+
+  const usersWithDuplicateCnics = findUsersWithDuplicateCnics()
+  
+  // Check if a user has duplicate CNIC
+  const hasDuplicateCnic = (userId: string): boolean => {
+    return usersWithDuplicateCnics.has(userId)
+  }
 
   const table = useReactTable({
     data,
@@ -678,6 +716,22 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4" />
+                Duplicate CNIC: {duplicateCnicFilter ? "Show Only" : "All"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => setDuplicateCnicFilter(false)}>
+                All
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDuplicateCnicFilter(true)}>
+                Show Only Duplicates
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center gap-4">
           <Button onClick={() => router.push("/admin/payment")}>
@@ -711,6 +765,11 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
                   return rowStatus === statusFilter.toLowerCase()
                 })
               }
+              if (duplicateCnicFilter) {
+                filteredRows = filteredRows.filter((row) => {
+                  return hasDuplicateCnic(row.original.id)
+                })
+              }
               return filteredRows.length
             })()} of {data.length} applicants
           </div>
@@ -742,16 +801,31 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
                   return rowStatus === statusFilter.toLowerCase()
                 })
               }
+              // Apply duplicate CNIC filter
+              if (duplicateCnicFilter) {
+                filteredRows = filteredRows.filter((row) => {
+                  return hasDuplicateCnic(row.original.id)
+                })
+              }
               return filteredRows.length ? (
-                filteredRows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+                filteredRows.map((row) => {
+                  const isDuplicate = hasDuplicateCnic(row.original.id)
+                  return (
+                    <TableRow 
+                      key={row.id}
+                      className={isDuplicate ? "bg-red-50 hover:bg-red-100" : ""}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell 
+                          key={cell.id}
+                          className={isDuplicate ? "text-red-900" : ""}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center">
@@ -858,6 +932,11 @@ export function UsersTable({ data, onRefresh }: UsersTableProps) {
                 filteredRows = filteredRows.filter((row) => {
                   const rowStatus = (row.original.status || "").toLowerCase()
                   return rowStatus === statusFilter.toLowerCase()
+                })
+              }
+              if (duplicateCnicFilter) {
+                filteredRows = filteredRows.filter((row) => {
+                  return hasDuplicateCnic(row.original.id)
                 })
               }
               return filteredRows.length
