@@ -11,7 +11,7 @@ export function EldersMessageSection() {
           
           <Card className="shadow-lg">
             <CardContent className="pt-8 pb-8 px-6 md:px-10 lg:px-12">
-              <div className="text-gray-700 leading-relaxed space-y-6 text-base md:text-lg">
+              <div className="text-gray-700 leading-relaxed space-y-6 text-base md:text-lg text-justify">
                 <p>
                   As elders and representatives of the Khawajak community, we are proud to witness the responsible development of our region's mineral resources through Insaf Mining & Minerals Private Limited. For over two decades, Malik Sajjad Amin and his team have worked in close partnership with our community, respecting our traditions, agreements, and collective interests.
                 </p>

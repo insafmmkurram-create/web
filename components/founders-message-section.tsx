@@ -28,7 +28,7 @@ export function FoundersMessageSection() {
             <div className="md:col-span-2">
               <Card className="shadow-lg">
                 <CardContent className="pt-8 pb-8 px-6 md:px-10 lg:px-12">
-                  <div className="text-gray-700 leading-relaxed space-y-6 text-base md:text-lg">
+                  <div className="text-gray-700 leading-relaxed space-y-6 text-base md:text-lg text-justify">
                     <div className="mb-6">
                       <h3 className="text-2xl font-bold text-gray-900 mb-2">Greetings!</h3>
                     </div>

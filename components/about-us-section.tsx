@@ -11,7 +11,7 @@ export function AboutUsSection() {
           
           <Card className="shadow-lg">
             <CardContent className="pt-8 pb-8 px-6 md:px-10 lg:px-12">
-              <div className="text-gray-700 leading-relaxed space-y-6 text-base md:text-lg">
+              <div className="text-gray-700 leading-relaxed space-y-6 text-base md:text-lg text-justify">
                 <p>
                   Insaf Mining & Minerals Private Limited is a pioneering mining company operating in the Kurram region, dedicated to responsible and transparent mineral development. Since 2004, our founder, Malik Sajjad Amin, has worked closely with the Khawajak community to establish long-term agreements that ensure fairness, community participation, and sustainable growth.
                 </p>

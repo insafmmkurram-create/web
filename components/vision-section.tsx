@@ -11,7 +11,7 @@ export function VisionSection() {
           
           <Card className="shadow-lg">
             <CardContent className="pt-8 pb-8 px-6 md:px-10 lg:px-12">
-              <div className="text-gray-700 leading-relaxed space-y-6 text-base md:text-lg">
+              <div className="text-gray-700 leading-relaxed space-y-6 text-base md:text-lg text-justify">
                 <p>
                   Our vision at Insaf Mining & Minerals Private Limited is to be a leader in responsible and sustainable mining, where mineral resources are managed transparently, fairly, and for the benefit of the entire community.
                 </p>
