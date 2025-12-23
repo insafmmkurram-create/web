@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Plus, Edit, Trash2, Loader2 } from "lucide-react"
 
@@ -28,7 +29,7 @@ export default function NewsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedNews, setSelectedNews] = useState<News | null>(null)
-  const [formData, setFormData] = useState({ title: "", content: "" })
+  const [formData, setFormData] = useState({ title: "", content: "", language: "english" as "urdu" | "english" })
   const [submitting, setSubmitting] = useState(false)
   const router = useRouter()
 
@@ -50,14 +51,14 @@ export default function NewsPage() {
   }
 
   const handleAddNews = () => {
-    setFormData({ title: "", content: "" })
+    setFormData({ title: "", content: "", language: "english" })
     setSelectedNews(null)
     setAddDialogOpen(true)
   }
 
   const handleEditNews = (news: News) => {
     setSelectedNews(news)
-    setFormData({ title: news.title, content: news.content })
+    setFormData({ title: news.title, content: news.content, language: news.language || "english" })
     setEditDialogOpen(true)
   }
 
@@ -77,9 +78,10 @@ export default function NewsPage() {
       await createNews({
         title: formData.title.trim(),
         content: formData.content.trim(),
+        language: formData.language,
       })
       setAddDialogOpen(false)
-      setFormData({ title: "", content: "" })
+      setFormData({ title: "", content: "", language: "english" })
       fetchNews()
       alert("News created successfully!")
     } catch (error: any) {
@@ -101,10 +103,11 @@ export default function NewsPage() {
       await updateNews(selectedNews.id, {
         title: formData.title.trim(),
         content: formData.content.trim(),
+        language: formData.language,
       })
       setEditDialogOpen(false)
       setSelectedNews(null)
-      setFormData({ title: "", content: "" })
+      setFormData({ title: "", content: "", language: "english" })
       fetchNews()
       alert("News updated successfully!")
     } catch (error: any) {
@@ -182,40 +185,55 @@ export default function NewsPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {newsList.map((news) => (
-                <Card key={news.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">{news.title}</h3>
-                      <p className="text-gray-700 whitespace-pre-wrap mb-4">{news.content}</p>
-                      <div className="text-sm text-gray-500">
-                        <span>Created: {formatDate(news.createdAt)}</span>
-                        {news.updatedAt && (
-                          <span className="ml-4">Updated: {formatDate(news.updatedAt)}</span>
-                        )}
+              {newsList.map((news) => {
+                const isUrdu = news.language === "urdu"
+                return (
+                  <Card key={news.id} className="p-6">
+                    <div className={`flex items-start justify-between ${isUrdu ? "flex-row-reverse" : ""}`}>
+                      <div className="flex-1">
+                        <h3 
+                          className={`text-xl font-bold text-gray-900 mb-2 ${isUrdu ? "text-right" : ""}`}
+                          dir={isUrdu ? "rtl" : "ltr"}
+                          style={isUrdu ? { fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Al Qalam Taj Nastaleeq', 'Nafees Web Naskh', 'Urdu Typesetting', serif" } : {}}
+                        >
+                          {news.title}
+                        </h3>
+                        <p 
+                          className={`text-gray-700 whitespace-pre-wrap mb-4 ${isUrdu ? "text-right" : ""}`}
+                          dir={isUrdu ? "rtl" : "ltr"}
+                          style={isUrdu ? { fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Al Qalam Taj Nastaleeq', 'Nafees Web Naskh', 'Urdu Typesetting', serif" } : {}}
+                        >
+                          {news.content}
+                        </p>
+                        <div className={`text-sm text-gray-500 ${isUrdu ? "text-right" : ""}`}>
+                          <span>{isUrdu ? "تاریخ تخلیق: " : "Created: "}{formatDate(news.createdAt)}</span>
+                          {news.updatedAt && (
+                            <span className={isUrdu ? "mr-4" : "ml-4"}>{isUrdu ? "تازہ کاری: " : "Updated: "}{formatDate(news.updatedAt)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`flex items-center gap-2 ${isUrdu ? "mr-4" : "ml-4"}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditNews(news)}
+                        >
+                          <Edit className={`${isUrdu ? "ml-2" : "mr-2"} h-4 w-4`} />
+                          {isUrdu ? "ترمیم" : "Edit"}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteNews(news)}
+                        >
+                          <Trash2 className={`${isUrdu ? "ml-2" : "mr-2"} h-4 w-4`} />
+                          {isUrdu ? "حذف" : "Delete"}
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditNews(news)}
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteNews(news)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                )
+              })}
             </div>
           )}
         </div>
@@ -232,13 +250,32 @@ export default function NewsPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
+                <Label htmlFor="add-language">Language</Label>
+                <RadioGroup
+                  value={formData.language}
+                  onValueChange={(value) => setFormData({ ...formData, language: value as "urdu" | "english" })}
+                  className="mt-2 flex gap-6"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="english" id="add-english" />
+                    <Label htmlFor="add-english" className="cursor-pointer">English</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="urdu" id="add-urdu" />
+                    <Label htmlFor="add-urdu" className="cursor-pointer">Urdu</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              <div>
                 <Label htmlFor="add-title">Title</Label>
                 <Input
                   id="add-title"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Enter news title"
-                  className="mt-1"
+                  placeholder={formData.language === "urdu" ? "عنوان درج کریں" : "Enter news title"}
+                  className={`mt-1 ${formData.language === "urdu" ? "text-right font-urdu" : ""}`}
+                  dir={formData.language === "urdu" ? "rtl" : "ltr"}
+                  style={formData.language === "urdu" ? { fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Al Qalam Taj Nastaleeq', 'Nafees Web Naskh', 'Urdu Typesetting', serif" } : {}}
                 />
               </div>
               <div>
@@ -247,8 +284,10 @@ export default function NewsPage() {
                   id="add-content"
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Enter news content"
-                  className="mt-1 min-h-[200px]"
+                  placeholder={formData.language === "urdu" ? "مواد درج کریں" : "Enter news content"}
+                  className={`mt-1 min-h-[200px] ${formData.language === "urdu" ? "text-right font-urdu" : ""}`}
+                  dir={formData.language === "urdu" ? "rtl" : "ltr"}
+                  style={formData.language === "urdu" ? { fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Al Qalam Taj Nastaleeq', 'Nafees Web Naskh', 'Urdu Typesetting', serif" } : {}}
                 />
               </div>
             </div>
@@ -281,13 +320,32 @@ export default function NewsPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
+                <Label htmlFor="edit-language">Language</Label>
+                <RadioGroup
+                  value={formData.language}
+                  onValueChange={(value) => setFormData({ ...formData, language: value as "urdu" | "english" })}
+                  className="mt-2 flex gap-6"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="english" id="edit-english" />
+                    <Label htmlFor="edit-english" className="cursor-pointer">English</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="urdu" id="edit-urdu" />
+                    <Label htmlFor="edit-urdu" className="cursor-pointer">Urdu</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              <div>
                 <Label htmlFor="edit-title">Title</Label>
                 <Input
                   id="edit-title"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Enter news title"
-                  className="mt-1"
+                  placeholder={formData.language === "urdu" ? "عنوان درج کریں" : "Enter news title"}
+                  className={`mt-1 ${formData.language === "urdu" ? "text-right font-urdu" : ""}`}
+                  dir={formData.language === "urdu" ? "rtl" : "ltr"}
+                  style={formData.language === "urdu" ? { fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Al Qalam Taj Nastaleeq', 'Nafees Web Naskh', 'Urdu Typesetting', serif" } : {}}
                 />
               </div>
               <div>
@@ -296,8 +354,10 @@ export default function NewsPage() {
                   id="edit-content"
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Enter news content"
-                  className="mt-1 min-h-[200px]"
+                  placeholder={formData.language === "urdu" ? "مواد درج کریں" : "Enter news content"}
+                  className={`mt-1 min-h-[200px] ${formData.language === "urdu" ? "text-right font-urdu" : ""}`}
+                  dir={formData.language === "urdu" ? "rtl" : "ltr"}
+                  style={formData.language === "urdu" ? { fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Al Qalam Taj Nastaleeq', 'Nafees Web Naskh', 'Urdu Typesetting', serif" } : {}}
                 />
               </div>
             </div>

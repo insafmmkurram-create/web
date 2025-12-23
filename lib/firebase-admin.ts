@@ -814,6 +814,7 @@ export interface News {
   id: string
   title: string
   content: string
+  language?: "urdu" | "english"
   createdAt?: any
   updatedAt?: any
 }
@@ -831,6 +832,7 @@ export async function getAllNews(): Promise<News[]> {
         id: doc.id,
         title: data.title || "",
         content: data.content || "",
+        language: data.language || "english",
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       })
@@ -843,12 +845,13 @@ export async function getAllNews(): Promise<News[]> {
   }
 }
 
-export async function createNews(newsData: { title: string; content: string }): Promise<string> {
+export async function createNews(newsData: { title: string; content: string; language?: "urdu" | "english" }): Promise<string> {
   try {
     const newsCollection = collection(db, NEWS_COLLECTION)
     const docRef = await addDoc(newsCollection, {
       title: newsData.title,
       content: newsData.content,
+      language: newsData.language || "english",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
@@ -861,12 +864,13 @@ export async function createNews(newsData: { title: string; content: string }): 
   }
 }
 
-export async function updateNews(newsId: string, newsData: { title: string; content: string }): Promise<void> {
+export async function updateNews(newsId: string, newsData: { title: string; content: string; language?: "urdu" | "english" }): Promise<void> {
   try {
     const newsRef = doc(db, NEWS_COLLECTION, newsId)
     await updateDoc(newsRef, {
       title: newsData.title,
       content: newsData.content,
+      language: newsData.language || "english",
       updatedAt: serverTimestamp(),
     })
     
