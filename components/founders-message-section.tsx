@@ -15,7 +15,7 @@ export function FoundersMessageSection() {
             <div className="md:col-span-1">
               <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden shadow-lg">
                 <Image
-                  src="/founder.jpeg"
+                  src="/founder.jpg"
                   alt="Malik Sajjad Amin, Founder and Owner"
                   fill
                   className="object-cover"
