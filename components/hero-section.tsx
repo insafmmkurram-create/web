@@ -17,7 +17,7 @@ export function HeroSection() {
   ]
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const downloadUrl = "/app.apk"
+  const downloadUrl = "https://play.google.com/store/apps/details?id=com.imam.app.mobile"
   const tickerMessage = "Download the Insaf mobile app — tap to install"
 
   useEffect(() => {
